@@ -1,6 +1,6 @@
 #include <iostream>
 #include <iterator>
-#include "include/rms/noiseGenerator.hpp"
+#include "../include/rms/noiseGenerator.hpp"
 
 int main(int argc, char* argv[])
 {

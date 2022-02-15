@@ -1,5 +1,9 @@
+#ifndef NOISEGENERATOR_H
+#define NOISEGENERATOR_H
+
 #include <iostream>
 #include <random>
+#include <chrono>
 
 class NoiseGenerator
 {
@@ -22,24 +26,29 @@ class NoiseGenerator
         {
             noiseParams.mean = mean;
             noiseParams.stddev = stddev;
+            
+            generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
             dist = std::normal_distribution<double>(mean, stddev);
         }
 
         NoiseGenerator()
         {
             noiseParams = NoiseParams(0., 0.);
+            generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
             dist = std::normal_distribution<double>(noiseParams.mean, noiseParams.stddev);
         }
 
         NoiseGenerator(const NoiseGenerator& noiseGenerator)
         {
             noiseParams = noiseGenerator.noiseParams;
+            generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
             dist = std::normal_distribution<double>(noiseParams.mean, noiseParams.stddev);
         }
 
         NoiseGenerator(const NoiseGenerator&& noiseGenerator)
         {
             noiseParams = noiseGenerator.noiseParams;
+            generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
             dist = std::normal_distribution<double>(noiseParams.mean, noiseParams.stddev);
         }
 
@@ -58,3 +67,5 @@ class NoiseGenerator
         std::normal_distribution<double> dist;
         NoiseParams noiseParams;
 };  
+
+#endif
