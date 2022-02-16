@@ -1,7 +1,19 @@
 <?xml version="1.0" encoding="UTF-8"?>
 
 <launch>
-    <node pkg="rms" name="radio_beacon" type="radio_beacon" output="screen"/>
+    <!-- Radio Beacons -->
+    <node pkg="rms" name="radio_beacon_1" type="radio_beacon" output="screen"
+        args="-id 1 -model quadrotor -x 50 -y 10 -z 0 -mean 0.0 -stddev 3.0"/>
+
+    <node pkg="rms" name="radio_beacon_2" type="radio_beacon" output="screen"
+        args="-id 2 -model quadrotor -x -50 -y 20 -z 0 -mean 0.0 -stddev 3.0"/>
+
+    <node pkg="rms" name="radio_beacon_3" type="radio_beacon" output="screen"
+        args="-id 3 -model quadrotor -x 30 -y -30 -z 0 -mean 0.0 -stddev 3.0"/>
+
+    <!-- GPS Module -->
+    <node pkg="rms" name="gps_module" type="gps_module" output="screen"
+        args="-model quadrotor -mean 0.0 -stddev 4.0"/>
 
     <arg name="debug" default="false" />
     <arg name="pause" default="false" />

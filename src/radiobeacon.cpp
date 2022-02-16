@@ -3,8 +3,7 @@
 #include <gazebo_msgs/ModelState.h>
 #include <gazebo_msgs/ModelStates.h>
 #include "../include/rms/noiseGenerator.hpp"
-#include <geometry_msgs/Pose.h>
-#include <std_msgs/Float64.h>
+#include "rms/BeaconMsg.h"
 
 struct Vector3
 {
@@ -61,11 +60,12 @@ struct Vector3
     }
 };
 
-const std::string robotName = "quadrotor";
+std::string robotName = "quadrotor";
 ros::Publisher distancePublisher;
 
-Vector3 beaconPos = Vector3(10., 10., 0.);
-NoiseGenerator noiseGenerator(0.0, 5.0);
+int id = 1;
+Vector3 beaconPos = Vector3(0., 0., 0.);
+NoiseGenerator noiseGenerator(0.0, 0.0);
 
 void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
 {
@@ -77,8 +77,12 @@ void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
             double dist = (pose - beaconPos).GetNorm();
             dist = noiseGenerator.AddAWGN(dist);
 
-            std_msgs::Float64 msg;
-            msg.data = dist;
+            rms::BeaconMsg msg;
+            msg.id = id;
+            msg.x = beaconPos.x;
+            msg.y = beaconPos.y;
+            msg.z = beaconPos.z;
+            msg.dist = dist;
             distancePublisher.publish(msg);
         }
     }
@@ -86,11 +90,101 @@ void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
 
 int main(int argc, char* argv[])
 {
-    ros::init(argc, argv, "radio_beacon");
+    double mean = 0., stddev = 0.;
+
+    // Argument parsing
+    for (int i = 1; i < argc; i += 2)
+    {
+        if ((std::string)argv[i] == "-id")
+        {
+            try
+            {
+                id = atoi(argv[i + 1]);
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }                 
+        }
+        else if ((std::string)argv[i] == "-model")
+        {
+            robotName = std::string(argv[i + 1]);           
+        }
+        else if ((std::string)argv[i] == "-x")
+        {
+            try
+            {
+                beaconPos.x = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }
+        else if ((std::string)argv[i] == "-y")
+        {
+            try
+            {
+                beaconPos.y = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }          
+        }
+        else if ((std::string)argv[i] == "-z")
+        {
+            try
+            {
+                beaconPos.z = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }
+        else if ((std::string)argv[i] == "-mean")
+        {
+            try
+            {
+                mean = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }
+        else if ((std::string)argv[i] == "-stddev")
+        {
+            try
+            {
+                stddev = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }       
+    }
+
+    ROS_INFO("Creating beacon...");
+    ROS_INFO("id     = %d", id);
+    ROS_INFO("model  = %s", robotName.c_str());
+    ROS_INFO("x      = %f", beaconPos.x);
+    ROS_INFO("y      = %f", beaconPos.y);
+    ROS_INFO("z      = %f", beaconPos.z);
+    ROS_INFO("mean   = %f", mean);
+    ROS_INFO("stddev = %f", stddev);
+    
+    noiseGenerator.Initialize(mean, stddev);
+
+    ros::init(argc, argv, "radio_beacon_" + std::to_string(id));
     ros::NodeHandle nh;
 
+    ros::service::waitForService("/gazebo/spawn_sdf_model");
+
     ros::Subscriber gazeboSubscriber = nh.subscribe<gazebo_msgs::ModelStates>("/gazebo/model_states", 10, SubscriberCallback);
-    distancePublisher = nh.advertise<std_msgs::Float64>("/beacon", 10);
+    distancePublisher = nh.advertise<rms::BeaconMsg>("/beacon", 10);
 
     ros::spin();
 }

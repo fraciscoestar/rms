@@ -52,6 +52,13 @@ class NoiseGenerator
             dist = std::normal_distribution<double>(noiseParams.mean, noiseParams.stddev);
         }
 
+        void Initialize(double& mean, double& stddev)
+        {
+            noiseParams = NoiseParams(mean, stddev);
+            generator.seed(std::chrono::system_clock::now().time_since_epoch().count());
+            dist = std::normal_distribution<double>(noiseParams.mean, noiseParams.stddev);
+        }
+
         double AddAWGN(const double& value)
         {
             return value + dist(generator);
