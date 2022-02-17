@@ -12,7 +12,7 @@
     <include>
         <uri>model://quadrotor</uri>
         <pose>0 0 0 0 0 0</pose>
-        <static>true</static>
+        <static>false</static>
     </include>
   </world>
 </sdf>
