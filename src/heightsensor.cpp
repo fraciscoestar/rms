@@ -2,7 +2,7 @@
 #include <ros/ros.h>
 #include <gazebo_msgs/ModelState.h>
 #include <gazebo_msgs/ModelStates.h>
-#include <geometry_msgs/Point.h>
+#include <std_msgs/Float64.h>
 #include "../include/rms/noiseGenerator.hpp"
 
 ros::Publisher heightPublisher;
@@ -14,17 +14,14 @@ double frequency = 10.;
 void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
 {
     ros::Rate rate(frequency);
-    
+
     for (int i = 0; i < msg->name.size(); i++)
     {
         if (msg->name[i] == robotName)
         {
-            geometry_msgs::Point pose;
-            pose.x = noiseGenerator.AddAWGN(msg->pose[i].position.x);
-            pose.y = noiseGenerator.AddAWGN(msg->pose[i].position.y);
-            pose.z = noiseGenerator.AddAWGN(msg->pose[i].position.z);
-
-            heightPublisher.publish(pose);
+            std_msgs::Float64 height;
+            height.data = abs(noiseGenerator.AddAWGN(msg->pose[i].position.z)); // Negative measurements have no physical meaning
+            heightPublisher.publish(height);
             rate.sleep();
         }
     }
@@ -62,7 +59,7 @@ int main(int argc, char* argv[])
             {
                 std::cerr << e.what() << '\n';
             }           
-        }   
+        }     
         else if ((std::string)argv[i] == "-freq")
         {
             try
@@ -73,10 +70,10 @@ int main(int argc, char* argv[])
             {
                 std::cerr << e.what() << '\n';
             }           
-        }     
+        }  
     }
 
-    ROS_INFO("Creating GPS...");
+    ROS_INFO("Creating height sensor...");
     ROS_INFO("model  = %s", robotName.c_str());
     ROS_INFO("mean   = %f", mean);
     ROS_INFO("stddev = %f", stddev);
@@ -84,13 +81,13 @@ int main(int argc, char* argv[])
     
     noiseGenerator.Initialize(mean, stddev);
 
-    ros::init(argc, argv, "gps_module");
+    ros::init(argc, argv, "height_sensor");
     ros::NodeHandle nh;
     
     ros::service::waitForService("/gazebo/spawn_sdf_model");
 
     ros::Subscriber gazeboSubscriber = nh.subscribe<gazebo_msgs::ModelStates>("/gazebo/model_states", 10, SubscriberCallback);
-    heightPublisher = nh.advertise<geometry_msgs::Point>("/gps", 10);
+    heightPublisher = nh.advertise<std_msgs::Float64>("/height", 10);
 
     ros::spin();
 }

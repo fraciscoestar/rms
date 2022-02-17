@@ -5,85 +5,31 @@
 #include "../include/rms/noiseGenerator.hpp"
 #include "rms/BeaconMsg.h"
 
-struct Vector3
-{
-    double x, y, z;
-
-    Vector3()
-    {
-        x = 0.;
-        y = 0.;
-        z = 0.;
-    }
-
-    Vector3(double x, double y, double z)
-    {
-        this->x = x;
-        this->y = y;
-        this->z = z;
-    }
-
-    Vector3(const Vector3& vector3)
-    {
-        x = vector3.x;
-        y = vector3.y;
-        z = vector3.z;
-    }
-
-    Vector3(const Vector3&& vector3)
-    {
-        x = vector3.x;
-        y = vector3.y;
-        z = vector3.z;
-    }
-
-    Vector3(const geometry_msgs::Pose& pose)
-    {
-        x = pose.position.x;
-        y = pose.position.y;
-        z = pose.position.z;
-    }
-
-    friend Vector3 operator+(Vector3 v1, const Vector3& v2)
-    {
-        return Vector3(v1.x + v2.x, v1.y + v2.y, v1.z + v2.z);
-    }
-
-    friend Vector3 operator-(Vector3 v1, const Vector3& v2)
-    {
-        return Vector3(v1.x - v2.x, v1.y - v2.y, v1.z - v2.z);
-    }
-
-    double GetNorm()
-    {
-        return sqrt(pow(x, 2) + pow(y, 2) + pow(z, 2));
-    }
-};
-
 std::string robotName = "quadrotor";
 ros::Publisher distancePublisher;
+double frequency = 10.;
 
 int id = 1;
-Vector3 beaconPos = Vector3(0., 0., 0.);
+geometry_msgs::Point beaconPos;
 NoiseGenerator noiseGenerator(0.0, 0.0);
 
 void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
 {
+    ros::Rate rate(frequency);
+
     for (int i = 0; i < msg->name.size(); i++)
     {
         if (msg->name[i] == robotName)
         {
-            Vector3 pose = Vector3(msg->pose[i].position.x, msg->pose[i].position.y, msg->pose[i].position.z);
-            double dist = (pose - beaconPos).GetNorm();
-            dist = noiseGenerator.AddAWGN(dist);
+            double dist = sqrt(pow(msg->pose[i].position.x - beaconPos.x, 2) + pow(msg->pose[i].position.y - beaconPos.y, 2) + pow(msg->pose[i].position.z - beaconPos.z, 2));
+            dist = abs(noiseGenerator.AddAWGN(dist));
 
             rms::BeaconMsg msg;
             msg.id = id;
-            msg.x = beaconPos.x;
-            msg.y = beaconPos.y;
-            msg.z = beaconPos.z;
+            msg.point = beaconPos;
             msg.dist = dist;
             distancePublisher.publish(msg);
+            rate.sleep();
         }
     }
 }
@@ -91,6 +37,9 @@ void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
 int main(int argc, char* argv[])
 {
     double mean = 0., stddev = 0.;
+    beaconPos.x = 0;
+    beaconPos.y = 0;
+    beaconPos.z = 0;
 
     // Argument parsing
     for (int i = 1; i < argc; i += 2)
@@ -164,7 +113,18 @@ int main(int argc, char* argv[])
             {
                 std::cerr << e.what() << '\n';
             }           
-        }       
+        }
+        else if ((std::string)argv[i] == "-freq")
+        {
+            try
+            {
+                frequency = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }   
     }
 
     ROS_INFO("Creating beacon...");
@@ -175,6 +135,7 @@ int main(int argc, char* argv[])
     ROS_INFO("z      = %f", beaconPos.z);
     ROS_INFO("mean   = %f", mean);
     ROS_INFO("stddev = %f", stddev);
+    ROS_INFO("freq   = %f", frequency);
     
     noiseGenerator.Initialize(mean, stddev);
 

@@ -11,6 +11,7 @@ find_package(catkin REQUIRED COMPONENTS
   roscpp
   rospy
   std_msgs
+  geometry_msgs
   message_generation
 )
 
@@ -71,6 +72,7 @@ add_message_files(
 generate_messages(
   DEPENDENCIES
   std_msgs
+  geometry_msgs
 )
 
 ################################################
@@ -136,6 +138,7 @@ include_directories(
 # add_executable(${PROJECT_NAME}_node src/rms_node.cpp)
 add_executable(radio_beacon src/radiobeacon.cpp)
 add_executable(gps_module src/gpsmodule.cpp)
+add_executable(height_sensor src/heightsensor.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -153,6 +156,7 @@ add_executable(gps_module src/gpsmodule.cpp)
 # )
 target_link_libraries(radio_beacon ${catkin_LIBRARIES})
 target_link_libraries(gps_module ${catkin_LIBRARIES})
+target_link_libraries(height_sensor ${catkin_LIBRARIES})
 
 #############
 ## Install ##
