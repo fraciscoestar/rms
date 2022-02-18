@@ -1,0 +1,167 @@
+/* KF (solo gps):
+X=[ x
+    y
+    z
+    vx
+    vy
+    vz ]
+
+F=[ 1  0  0  T  0  0
+    0  1  0  0  T  0
+    0  0  1  0  0  T
+    0  0  0  1  0  0
+    0  0  0  0  1  0
+    0  0  0  0  0  1 ] -> Modelo supone que el dron se desplazará con la velocidad, que será constante
+
+z=[ xgps_k
+    ygps_k
+    zgps_k
+    xgps_k-1
+    ygps_k-1
+    zgps_k-1 ]
+
+H=[ 1  0  0  0  0  0
+    0  1  0  0  0  0
+    0  0  1  0  0  0
+    1  0  0 -T  0  0
+    0  1  0  0 -T  0
+    0  0  1  0  0 -T ] Matriz jacobiana de h (columnas "son X" y filas "son z")
+
+h=[ x
+    y
+    z
+    x - vx·T
+    y - vy·T
+    z - vz·T ]
+
+R=[ σx² 0  0  0  0  0
+     0 σx² 0  0  0  0
+     0  0 σy² 0  0  0
+     0  0  0 σy² 0  0
+     0  0  0  0 σz² 0
+     0  0  0  0  0 σz² ] Matriz de covarianza de los sensores (gps)
+/* KF (solo gps):
+X=[ x
+    y
+    z
+    vx
+    vy
+    vz ]
+
+F=[ 1  0  0  T  0  0
+    0  1  0  0  T  0
+    0  0  1  0  0  T
+    0  0  0  1  0  0
+    0  0  0  0  1  0
+    0  0  0  0  0  1 ] -> Modelo supone que el dron se desplazará con la velocidad, que será constante
+
+z=[ xgps_k
+    ygps_k
+    zgps_k
+    xgps_k-1
+    ygps_k-1
+    zgps_k-1 ]
+
+H=[ 1  0  0  0  0  0
+    0  1  0  0  0  0
+    0  0  1  0  0  0
+    1  0  0 -T  0  0
+    0  1  0  0 -T  0
+    0  0  0  0  0 -T ] Matriz jacobiana de h (columnas "son X" y filas "son z")
+
+h=[ x
+    y
+    z
+    x - vx·T
+    y - vy·T
+    z - vz·T ]
+
+R=[ σx² 0  0  0  0  0
+     0 σx² 0  0  0  0
+     0  0 σy² 0  0  0
+     0  0  0 σy² 0  0
+     0  0  0  0 σz² 0
+     0  0  0  0  0 σz² ] Matriz de covarianza de los sensores (gps)
+
+Q=[ q² 0  0  0  0  0
+    0  q² 0  0  0  0
+    0  0  q² 0  0  0
+    0  0  0  q² 0  0
+    0  0  0  0  q² 0
+    0  0  0  0  0  q² ] Matriz de covarianza del modelo
+
+P=[ σx² 0  0  0  0  0
+     0 σy² 0  0  0  0
+     0  0 σz² 0  0  0
+     0  0  0 σx² 0  0
+     0  0  0  0 σy² 0
+     0  0  0  0  0 σz²] Como en este modelo sí conocemos la velocidad, no es necesario asignar mayor valor a las fil/col de vx,vy,vz
+*/
+
+/////////////////////////////////////////////
+
+/* KF (GPS + Altimetro):
+X=[ x
+    y
+    z
+    vx
+    vy
+    vz ]
+
+F=[ 1  0  0  T  0  0
+    0  1  0  0  T  0
+    0  0  1  0  0  T
+    0  0  0  1  0  0
+    0  0  0  0  1  0
+    0  0  0  0  0  1 ] -> Modelo supone que el dron se desplazará con la velocidad, que será constante
+
+z=[ xgps_k
+    ygps_k
+    zgps_k
+    xgps_k-1
+    ygps_k-1
+    zgps_k-1 
+    h_k
+    h_k-1 ]
+
+H=[ 1  0  0  0  0  0
+    0  1  0  0  0  0
+    0  0  1  0  0  0
+    1  0  0 -T  0  0
+    0  1  0  0 -T  0
+    0  0  1  0  0 -T 
+    0  0  1  0  0  0
+    0  0  1  0  0 -T ] Matriz jacobiana de h (columnas "son X" y filas "son z")
+
+h=[ x
+    y
+    z
+    x - vx·T
+    y - vy·T
+    z - vz·T 
+    z
+    z - vz·T]
+
+R=[ σx² 0  0  0  0  0  0  0
+     0 σx² 0  0  0  0  0  0
+     0  0 σy² 0  0  0  0  0
+     0  0  0 σy² 0  0  0  0
+     0  0  0  0 σz² 0  0  0
+     0  0  0  0  0 σz² 0  0
+     0  0  0  0  0  0 σh² 0
+     0  0  0  0  0  0  0 σh² ] Matriz de covarianza de los sensores
+
+Q=[ q² 0  0  0  0  0
+    0  q² 0  0  0  0
+    0  0  q² 0  0  0
+    0  0  0  q² 0  0
+    0  0  0  0  q² 0
+    0  0  0  0  0  q² ] Matriz de covarianza del modelo
+
+P=[ σx² 0  0  0  0  0
+     0 σy² 0  0  0  0
+     0  0 σz² 0  0  0
+     0  0  0 σx² 0  0
+     0  0  0  0 σy² 0
+     0  0  0  0  0 σz²] Como en este modelo sí conocemos la velocidad, no es necesario asignar mayor valor a las fil/col de vx,vy,vz
+*/

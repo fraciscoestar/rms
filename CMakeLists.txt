@@ -141,6 +141,7 @@ add_executable(radio_beacon src/radiobeacon.cpp)
 add_executable(gps_module src/gpsmodule.cpp)
 add_executable(height_sensor src/heightsensor.cpp)
 add_executable(drone_control src/dronecontrol.cpp)
+add_executable(rviz_helper src/rvizhelper.cpp)
 
 ## Rename C++ executable without prefix
 ## The above recommended prefix causes long target names, the following renames the
@@ -160,6 +161,7 @@ target_link_libraries(radio_beacon ${catkin_LIBRARIES})
 target_link_libraries(gps_module ${catkin_LIBRARIES})
 target_link_libraries(height_sensor ${catkin_LIBRARIES})
 target_link_libraries(drone_control ${catkin_LIBRARIES})
+target_link_libraries(rviz_helper ${catkin_LIBRARIES})
 
 #############
 ## Install ##

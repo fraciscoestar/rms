@@ -1,5 +1,6 @@
 #include <iostream>
 #include <ros/ros.h>
+#include <std_msgs/Int32.h>
 #include <geometry_msgs/Twist.h>
 #include <geometry_msgs/Pose.h>
 #include <gazebo_msgs/ModelState.h>
@@ -18,6 +19,9 @@ geometry_msgs::Pose targetPose;
 geometry_msgs::Twist currentVelocity;
 geometry_msgs::Twist targetVelocity;
 
+geometry_msgs::Pose ekfPose;
+geometry_msgs::Twist ekfVelocity;
+
 double frequency = 120.;
 
 void GazeboSubscriber(const gazebo_msgs::ModelStates::ConstPtr& msg)
@@ -32,6 +36,12 @@ void GazeboSubscriber(const gazebo_msgs::ModelStates::ConstPtr& msg)
             currentVelocity = msg->twist[i];
         }
     }
+}
+
+void EKFSubscriber(const gazebo_msgs::ModelState::ConstPtr& msg)
+{
+    ekfPose = msg->pose;
+    ekfVelocity = msg->twist;
 }
 
 bool TakeOffServiceCalled(rms::TakeOff::Request& req, rms::TakeOff::Response& res)
@@ -187,8 +197,10 @@ int main(int argc, char* argv[])
 
     ros::NodeHandle nh;
     ros::Subscriber gazeboSubscriber = nh.subscribe<gazebo_msgs::ModelStates>("/gazebo/model_states", 10, GazeboSubscriber);
+    ros::Subscriber ekfSubscriber = nh.subscribe<gazebo_msgs::ModelState>("/ekf", 10, EKFSubscriber);
 
     ros::Publisher publisher = nh.advertise<gazebo_msgs::ModelState>("/gazebo/set_model_state", 10);
+    ros::Publisher statepublisher = nh.advertise<std_msgs::Int32>("/drone_state", 10);
 
     ros::ServiceServer takeOffService = nh.advertiseService("/take_off", TakeOffServiceCalled);
     ros::ServiceServer landService = nh.advertiseService("/land", LandServiceCalled);
@@ -204,6 +216,10 @@ int main(int argc, char* argv[])
         msg.pose = Move();
 
         publisher.publish(msg);
+
+        std_msgs::Int32 stateMsg;
+        stateMsg.data = (int)droneState;
+        statepublisher.publish(stateMsg);
         
         ros::spinOnce();
         rate.sleep();
