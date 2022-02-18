@@ -5,11 +5,12 @@
 #include <gazebo_msgs/ModelState.h>
 #include <gazebo_msgs/ModelStates.h>
 #include <rms/TakeOff.h>
+#include <rms/Land.h>
 #include <rms/GoToWaypoint.h>
 
-bool landed = true;
-bool busy = false;
-bool moving = false;
+enum DroneState { Landed, TakingOff, Idle, Moving, Landing };
+DroneState droneState = Landed;
+bool blocked = false;
 
 std::string robotName = "quadrotor";
 geometry_msgs::Pose currentPose;
@@ -35,12 +36,33 @@ void GazeboSubscriber(const gazebo_msgs::ModelStates::ConstPtr& msg)
 
 bool TakeOffServiceCalled(rms::TakeOff::Request& req, rms::TakeOff::Response& res)
 {
-    if (landed && !busy)
+    if (droneState == Landed)
     {
         targetPose = currentPose;
-        targetPose.position.z = req.height;
+        targetPose.position.z = req.height;        
+        droneState = TakingOff;
+        blocked = true;
+
         res.ok = true;
-        landed = false;
+        return true;
+    }
+    else
+    {
+        res.ok = false;
+        return false;
+    }
+}
+
+bool LandServiceCalled(rms::Land::Request& req, rms::Land::Response& res)
+{
+    if (droneState == Idle || (droneState == Moving && !blocked))
+    {
+        targetPose = currentPose;
+        targetPose.position.z = 0;        
+        droneState = Landing;
+        blocked = true;
+
+        res.ok = true;
         return true;
     }
     else
@@ -52,9 +74,12 @@ bool TakeOffServiceCalled(rms::TakeOff::Request& req, rms::TakeOff::Response& re
 
 bool GoToWaypointServiceCalled(rms::GoToWaypoint::Request& req, rms::GoToWaypoint::Response& res)
 {
-    if(!landed && !busy)
+    if(droneState == Idle || (droneState == Moving && !blocked))
     {
         targetPose.position = req.waypoint;
+        blocked = req.blocking;
+        droneState = Moving;
+
         res.ok = true;
         return true;
     }
@@ -69,7 +94,7 @@ geometry_msgs::Twist GetVelocityRef(geometry_msgs::Point targetPoint)
 {
     double max_horizontal_velocity = 10.0;
     double max_vertical_velocity = 10.0;
-    double max_position_error = 0.001;
+    double max_position_error = 0.01;
     geometry_msgs::Twist vel;
 
     double dx = targetPoint.x - currentPose.position.x;
@@ -94,6 +119,35 @@ geometry_msgs::Twist GetVelocityRef(geometry_msgs::Point targetPoint)
     if (std::abs(dz) < max_position_error)
         vel.linear.z = 0;
 
+    if (std::abs(dx) < max_position_error && std::abs(dy) < max_position_error && std::abs(dz) < max_position_error)
+    {
+        switch (droneState)
+        {
+        case Landed:
+            break;
+
+        case TakingOff:
+            droneState = Idle;
+            break;
+
+        case Idle:
+            break;
+
+        case Moving:
+            droneState = Idle;
+            break;
+
+        case Landing:
+            droneState = Landed;
+            break;
+        
+        default:
+            break;
+        }
+
+        blocked = false;
+    }
+
     return vel;
 }
 
@@ -106,9 +160,21 @@ geometry_msgs::Pose Move()
     currentVelocity.linear.z = (0.4 * targetVelocity.linear.z + 0.6 * currentVelocity.linear.z);
 
     geometry_msgs::Pose pose;
-    pose.position.x = currentPose.position.x + dt * currentVelocity.linear.x;
-    pose.position.y = currentPose.position.y + dt * currentVelocity.linear.y;
-    pose.position.z = currentPose.position.z + dt * currentVelocity.linear.z;
+
+    if (targetVelocity.linear.x != 0)
+        pose.position.x = currentPose.position.x + dt * currentVelocity.linear.x;
+    else
+        pose.position.x = targetPose.position.x;
+
+    if (targetVelocity.linear.y != 0)
+        pose.position.y = currentPose.position.y + dt * currentVelocity.linear.y;
+    else
+        pose.position.y = targetPose.position.y;
+
+    if (targetVelocity.linear.z != 0)
+        pose.position.z = currentPose.position.z + dt * currentVelocity.linear.z;
+    else
+        pose.position.z = targetPose.position.z;
 
     return pose;
 }
@@ -125,6 +191,7 @@ int main(int argc, char* argv[])
     ros::Publisher publisher = nh.advertise<gazebo_msgs::ModelState>("/gazebo/set_model_state", 10);
 
     ros::ServiceServer takeOffService = nh.advertiseService("/take_off", TakeOffServiceCalled);
+    ros::ServiceServer landService = nh.advertiseService("/land", LandServiceCalled);
     ros::ServiceServer goToWaypointService = nh.advertiseService("/go_to_waypoint", GoToWaypointServiceCalled);
 
     ros::Rate rate(frequency);
@@ -135,9 +202,6 @@ int main(int argc, char* argv[])
         gazebo_msgs::ModelState msg;
         msg.model_name = robotName;
         msg.pose = Move();
-
-        ROS_INFO("Moving to %f,%f,%f", msg.pose.position.x, msg.pose.position.y, msg.pose.position.z);
-        ROS_INFO("Ref Speed %f,%f,%f", targetVelocity.linear.x, targetVelocity.linear.y, targetVelocity.linear.z);
 
         publisher.publish(msg);
         

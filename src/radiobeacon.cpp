@@ -10,6 +10,7 @@ ros::Publisher distancePublisher;
 double frequency = 10.;
 
 int id = 1;
+double range = 100.;
 geometry_msgs::Point beaconPos;
 NoiseGenerator noiseGenerator(0.0, 0.0);
 
@@ -22,6 +23,12 @@ void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
         if (msg->name[i] == robotName)
         {
             double dist = sqrt(pow(msg->pose[i].position.x - beaconPos.x, 2) + pow(msg->pose[i].position.y - beaconPos.y, 2) + pow(msg->pose[i].position.z - beaconPos.z, 2));
+            if (dist > range)
+            {
+                rate.sleep();
+                return;
+            }              
+            
             dist = abs(noiseGenerator.AddAWGN(dist));
 
             rms::BeaconMsg msg;
@@ -119,6 +126,17 @@ int main(int argc, char* argv[])
             try
             {
                 frequency = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }   
+        else if ((std::string)argv[i] == "-range")
+        {
+            try
+            {
+                range = atof(argv[i + 1]);              
             }
             catch(const std::exception& e)
             {

@@ -59,6 +59,7 @@ add_service_files(
   FILES
   GoToWaypoint.srv
   TakeOff.srv
+  Land.srv
 )
 
 ## Generate actions in the 'action' folder

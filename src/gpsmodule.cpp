@@ -6,7 +6,9 @@
 #include "../include/rms/noiseGenerator.hpp"
 
 ros::Publisher heightPublisher;
-NoiseGenerator noiseGenerator(0., 0.);
+NoiseGenerator noiseGeneratorX(0., 0.);
+NoiseGenerator noiseGeneratorY(0., 0.);
+NoiseGenerator noiseGeneratorZ(0., 0.);
 
 std::string robotName = "quadrotor";
 double frequency = 10.;
@@ -20,9 +22,9 @@ void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
         if (msg->name[i] == robotName)
         {
             geometry_msgs::Point pose;
-            pose.x = noiseGenerator.AddAWGN(msg->pose[i].position.x);
-            pose.y = noiseGenerator.AddAWGN(msg->pose[i].position.y);
-            pose.z = noiseGenerator.AddAWGN(msg->pose[i].position.z);
+            pose.x = noiseGeneratorX.AddAWGN(msg->pose[i].position.x);
+            pose.y = noiseGeneratorY.AddAWGN(msg->pose[i].position.y);
+            pose.z = std::abs(noiseGeneratorZ.AddAWGN(msg->pose[i].position.z)); // Height cant be negative
 
             heightPublisher.publish(pose);
             rate.sleep();
@@ -32,7 +34,9 @@ void SubscriberCallback(const gazebo_msgs::ModelStates::ConstPtr& msg)
 
 int main(int argc, char* argv[])
 {
-    double mean = 0, stddev = 0;
+    double meanX = 0, stddevX = 0;
+    double meanY = 0, stddevY = 0;
+    double meanZ = 0, stddevZ = 0;
 
     // Argument parsing
     for (int i = 1; i < argc; i += 2)
@@ -41,28 +45,72 @@ int main(int argc, char* argv[])
         {
             robotName = std::string(argv[i + 1]);           
         }
-        else if ((std::string)argv[i] == "-mean")
+        else if ((std::string)argv[i] == "-meanx")
         {
             try
             {
-                mean = atof(argv[i + 1]);              
+                meanX = atof(argv[i + 1]);              
             }
             catch(const std::exception& e)
             {
                 std::cerr << e.what() << '\n';
             }           
         }
-        else if ((std::string)argv[i] == "-stddev")
+        else if ((std::string)argv[i] == "-stddevx")
         {
             try
             {
-                stddev = atof(argv[i + 1]);              
+                stddevX = atof(argv[i + 1]);              
             }
             catch(const std::exception& e)
             {
                 std::cerr << e.what() << '\n';
             }           
-        }   
+        }
+        else if ((std::string)argv[i] == "-meany")
+        {
+            try
+            {
+                meanY = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }
+        else if ((std::string)argv[i] == "-stddevy")
+        {
+            try
+            {
+                stddevY = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }
+        else if ((std::string)argv[i] == "-meanz")
+        {
+            try
+            {
+                meanZ = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        }
+        else if ((std::string)argv[i] == "-stddevz")
+        {
+            try
+            {
+                stddevZ = atof(argv[i + 1]);              
+            }
+            catch(const std::exception& e)
+            {
+                std::cerr << e.what() << '\n';
+            }           
+        } 
         else if ((std::string)argv[i] == "-freq")
         {
             try
@@ -77,12 +125,18 @@ int main(int argc, char* argv[])
     }
 
     ROS_INFO("Creating GPS...");
-    ROS_INFO("model  = %s", robotName.c_str());
-    ROS_INFO("mean   = %f", mean);
-    ROS_INFO("stddev = %f", stddev);
-    ROS_INFO("freq   = %f", frequency);
+    ROS_INFO("model   = %s", robotName.c_str());
+    ROS_INFO("meanX   = %f", meanX);
+    ROS_INFO("stddevX = %f", stddevX);
+    ROS_INFO("meanY   = %f", meanY);
+    ROS_INFO("stddevY = %f", stddevY);
+    ROS_INFO("meanZ   = %f", meanZ);
+    ROS_INFO("stddevZ = %f", stddevZ);
+    ROS_INFO("freq    = %f", frequency);
     
-    noiseGenerator.Initialize(mean, stddev);
+    noiseGeneratorX.Initialize(meanX, stddevX);
+    noiseGeneratorY.Initialize(meanY, stddevY);
+    noiseGeneratorZ.Initialize(meanZ, stddevZ);
 
     ros::init(argc, argv, "gps_module");
     ros::NodeHandle nh;

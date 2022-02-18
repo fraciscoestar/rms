@@ -1,3 +1,4 @@
 geometry_msgs/Point waypoint
+bool blocking
 ---
 bool ok
