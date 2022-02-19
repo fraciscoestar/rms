@@ -23,7 +23,7 @@
         args="-model quadrotor -mean 0.0 -stddev 0.02 -freq 10"/>
 
     <!-- EKF -->
-    <node pkg="rms" name="ekf" type="ekf.py" output="screen"/>
+    <node pkg="rms" name="ekf" type="ekf.py" output="screen" respawn="true"/>
 
     <!-- Drone control -->
     <node pkg="rms" name="drone_control" type="drone_control" output="screen"/>
